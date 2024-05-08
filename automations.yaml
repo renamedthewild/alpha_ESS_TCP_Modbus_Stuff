@@ -1,0 +1,59 @@
+- id: '1687673334454'
+  alias: Set Electricity Tariff
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - sensor.electricity_tariff
+  condition: []
+  action:
+  - service: select.select_option
+    data:
+      option: '{{ trigger.to_state.state }}'
+    target:
+      entity_id: select.powercosts
+  mode: single
+- alias: Solcast update
+  description: ''
+  trigger:
+  - platform: template
+    value_template: "{% set nr = as_datetime(state_attr('sun.sun','next_rising'))
+      | as_local %} {% set ns = as_datetime(state_attr('sun.sun','next_setting'))
+      | as_local %} {% set api_request_limit = 10 %} {% if nr > ns %}\n  {% set nr
+      = nr - timedelta(hours=24) %}\n{% endif %} {% set hours_difference = (ns - nr)
+      %} {% set interval_hours = hours_difference / api_request_limit %} {% set ns
+      = namespace(match = false) %} {% for i in range(api_request_limit) %}\n  {%
+      set start_time = nr + (i * interval_hours) %}\n  {% if ((start_time - timedelta(seconds=30))
+      <= now()) and (now() <= (start_time + timedelta(seconds=30))) %}\n    {% set
+      ns.match = true %}\n  {% endif %}\n{% endfor %} {{ ns.match }}"
+  condition:
+  - condition: sun
+    before: sunset
+    after: sunrise
+  action:
+  - service: solcast_solar.update_forecasts
+    data: {}
+  mode: single
+  id: e0555c4906d245558885c2ab0b06faac
+- alias: Battery Fault Description Check
+  description: ''
+  trigger:
+  - platform: state
+    entity_id: sensor.Battery_Fault
+  action:
+  - service: python_script.battery_fault_description
+    data:
+      fault_code: '{{ states(''sensor.Battery_Fault'') }}'
+  id: 9178af80712841d5afad252c12a45bff
+- alias: Notify when Inverter Mode changes
+  trigger:
+  - platform: state
+    entity_id: sensor.inverter_mode
+  action:
+  - device_id: 207b5eb645ded9321f0ef78d0772efba
+    domain: mobile_app
+    type: notify
+    message: Inverter Mode has changed to {{ states('sensor.inverter_mode') }}
+    title: Inverter Mode Changed
+  mode: single
+  id: 1bb5171bbc3346918d76df51d4baead5
