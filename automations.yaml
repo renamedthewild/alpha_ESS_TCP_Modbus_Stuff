@@ -1,59 +1,72 @@
+# Automation to dynamically update electricity tariff based on sensor changes
 - id: '1687673334454'
   alias: Set Electricity Tariff
-  description: ''
+  description: 'Automatically update the electricity tariff when the sensor value changes.'
   trigger:
-  - platform: state
-    entity_id:
-    - sensor.electricity_tariff
-  condition: []
+    - platform: state
+      entity_id: sensor.electricity_tariff
   action:
-  - service: select.select_option
-    data:
-      option: '{{ trigger.to_state.state }}'
-    target:
-      entity_id: select.powercosts
+    - service: select.select_option
+      target:
+        entity_id: select.powercosts
+      data:
+        option: '{{ trigger.to_state.state }}'
   mode: single
-- alias: Solcast update
-  description: ''
+
+# Automation to update solar forecasts around sunrise and sunset
+- id: e0555c4906d245558885c2ab0b06faac
+  alias: Solcast update
+  description: 'Request new solar forecasts based on the sun's position.'
   trigger:
-  - platform: template
-    value_template: "{% set nr = as_datetime(state_attr('sun.sun','next_rising'))
-      | as_local %} {% set ns = as_datetime(state_attr('sun.sun','next_setting'))
-      | as_local %} {% set api_request_limit = 10 %} {% if nr > ns %}\n  {% set nr
-      = nr - timedelta(hours=24) %}\n{% endif %} {% set hours_difference = (ns - nr)
-      %} {% set interval_hours = hours_difference / api_request_limit %} {% set ns
-      = namespace(match = false) %} {% for i in range(api_request_limit) %}\n  {%
-      set start_time = nr + (i * interval_hours) %}\n  {% if ((start_time - timedelta(seconds=30))
-      <= now()) and (now() <= (start_time + timedelta(seconds=30))) %}\n    {% set
-      ns.match = true %}\n  {% endif %}\n{% endfor %} {{ ns.match }}"
+    - platform: template
+      value_template: >
+        {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local %}
+        {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local %}
+        {% set api_request_limit = 10 %}
+        {% if nr > ns %}
+          {% set nr = nr - timedelta(hours=24) %}
+        {% endif %}
+        {% set hours_difference = (ns - nr) %}
+        {% set interval_hours = hours_difference / api_request_limit %}
+        {% set ns = namespace(match = false) %}
+        {% for i in range(api_request_limit) %}
+          {% set start_time = nr + (i * interval_hours) %}
+          {% if ((start_time - timedelta(seconds=30)) <= now()) and (now() <= (start_time + timedelta(seconds=30))) %}
+            {% set ns.match = true %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.match }}
   condition:
-  - condition: sun
-    before: sunset
-    after: sunrise
+    - condition: sun
+      before: sunset
+      after: sunrise
   action:
-  - service: solcast_solar.update_forecasts
-    data: {}
+    - service: solcast_solar.update_forecasts
   mode: single
-  id: e0555c4906d245558885c2ab0b06faac
-- alias: Battery Fault Description Check
-  description: ''
+
+# Automation to handle battery fault by running a python script
+- id: 9178af80712841d5afad252c12a45bff
+  alias: Battery Fault Description Check
+  description: 'Run a python script to diagnose battery fault based on the fault code sensor.'
   trigger:
-  - platform: state
-    entity_id: sensor.Battery_Fault
+    - platform: state
+      entity_id: sensor.Battery_Fault
   action:
-  - service: python_script.battery_fault_description
-    data:
-      fault_code: '{{ states(''sensor.Battery_Fault'') }}'
-  id: 9178af80712841d5afad252c12a45bff
-- alias: Notify when Inverter Mode changes
+    - service: python_script.battery_fault_description
+      data:
+        fault_code: '{{ states(''sensor.Battery_Fault'') }}'
+
+# Notify when inverter mode changes
+- id: 1bb5171bbc3346918d76df51d4baead5
+  alias: Notify when Inverter Mode changes
+  description: 'Send a notification when the inverter mode changes.'
   trigger:
-  - platform: state
-    entity_id: sensor.inverter_mode
+    - platform: state
+      entity_id: sensor.inverter_mode
   action:
-  - device_id: 207b5eb645ded9321f0ef78d0772efba
-    domain: mobile_app
-    type: notify
-    message: Inverter Mode has changed to {{ states('sensor.inverter_mode') }}
-    title: Inverter Mode Changed
+    - device_id: #yourdeviceIDhere
+      domain: mobile_app
+      type: notify
+      message: 'Inverter Mode has changed to {{ states(''sensor.inverter_mode'') }}'
+      title: 'Inverter Mode Changed'
   mode: single
-  id: 1bb5171bbc3346918d76df51d4baead5
