@@ -1,10 +1,15 @@
 #################################################################################################################################
 #
+#   Author:                 Axel Koegler (axel.koegler@gmail.com)
+#   Documentation:          https://hillviewlodge.ie/_alphaess-ha-integration/HA-AlphaESS-Integration.odt
+#
+#   Change History:
+#
 #   0.1     2023-12-05      Took initial copy from https://github.com/snitzelweck92/homeassistant_alphaess_modbus_tcp
 #   0.2     2023-12-08      Updated with parts from https://github.com/umrath/homeassistant_alphaess_modbus_tcp/tree/target_soc
 #   0.3     2023-12-08      Reviewed https://github.com/umrath/homeassistant_alphaess_modbus_tcp/tree/dispatch
 #                           but the "Dispatch" implementation was incomplete
-#   0.4     2023-12-11      Fixed Alpha_ESS_Total_House_Load and Alpha_ESS_Current_House_Load calculations
+#   0.4     2023-12-11      Fixed AlphaESS_Total_House_Load and AlphaESS_Current_House_Load calculations
 #   0.5     2023-12-14      Found "Dispatch" sequence details here:
 #                           https://www.storion4you.de/thread/831-modbus-befehl-senden-speicherladung-über-netz-aktivieren/
 #   0.6     2023-12-29      Tidied up several senor names and precision values
@@ -17,17 +22,20 @@
 #   1.3     2024-01-21      Added "Charging" sensors and "Charging" automation
 #   1.4     2024-01-25      Added "Charging Now" automation and cleaned up helpers/automations names
 #   1.5     2024-01-26      Added day rollover logic to "Charging Now" automation
-#   1.6     2024-02-03      Renamed Alpha_ESS_Time_Period_Control to Alpha_ESS_Charging_Time_Period_Control
-#   1.7     2024-02-21      Renamed Alpha_ESS_Total_Energy_Feed_to_Grid (added _Meter),
-#                           Alpha_ESS_Total_Energy_Consumption_from_Grid (added _Meter), added
-#                           Alpha_ESS_Total_Energy_Feed_to_Grid_PV and adjusted Alpha_ESS_Total_House_Load
-#   1.8     2024-02-23      Added Alpha_ESS_Total_Energy_Feed_to_Grid_Meter_with_Heartbeat to fix Derivative integration
-#   1.9     2024-02-23      Added "Alpha ESS Energy Feed to Grid (Meter) (Derivative)" for Power Diagram support
+#   1.6     2024-02-03      Renamed AlphaESS_Time_Period_Control to AlphaESS_Charging_Time_Period_Control
+#   1.7     2024-02-21      Renamed AlphaESS_Total_Energy_Feed_to_Grid (added _Meter),
+#                           AlphaESS_Total_Energy_Consumption_from_Grid (added _Meter), added
+#                           AlphaESS_Total_Energy_Feed_to_Grid_PV and adjusted AlphaESS_Total_House_Load
+#   1.8     2024-02-23      Added AlphaESS_Total_Energy_Feed_to_Grid_Meter_with_Heartbeat to fix Derivative integration
+#   1.9     2024-02-23      Added "AlphaESS Energy Feed to Grid (Meter) (Derivative)" for Power Diagram support
 #   2.0     2024-02-27      Added 6 Utility Meters for Today's Calculations, renamed some _Current and some _Total entities
 #                           and fixed calculations based on these
 #   2.1     2024-03-01      Changed Dispatch SoC to 20%
 #   2.2     2024-03-05      Changed "Charging Default" to charge from 2:00-6:00 and extended "Dispatch" to 2.5h
 #   2.3     2024-03-07      Fixed "Charging Now" delay
+#   2.4     2024-05-13      Added additional header information
+#   2.5     2024-05-24      Replaced "Alpha ESS*" and "Alpha_ESS*" with "AlphaESS*", changed
+#                           "Total Energy Charge Battery from Grid" to "AlphaESS Total Energy Charge Battery from Grid"
 #
 #################################################################################################################################
 
@@ -44,8 +52,8 @@ modbus:
 # Definition of sensors
     sensors:
 # Measurements other
-      - name: Alpha ESS Inverter Grid Frequency
-        unique_id: Alpha_ESS_Inverter_Grid_Frequency
+      - name: AlphaESS Inverter Grid Frequency
+        unique_id: AlphaESS_Inverter_Grid_Frequency
         slave: !secret alphaess_modbus_slaveId
         address: 1052
         input_type: holding
@@ -57,8 +65,8 @@ modbus:
         scale: 0.01
         precision: 2                         
 
-      - name: Alpha ESS Inverter Temperature 
-        unique_id: Alpha_ESS_Inverter_Temperature
+      - name: AlphaESS Inverter Temperature 
+        unique_id: AlphaESS_Inverter_Temperature
         slave: !secret alphaess_modbus_slaveId
         address: 1077
         input_type: holding
@@ -70,29 +78,10 @@ modbus:
         scale: 0.1
         precision: 0
         
-      - name: Inverter Status 
-        unique_id: Inverter_Status
-        slave: !secret alphaess_modbus_slaveId
-        address: 1088
-        input_type: holding
-        data_type: uint16
-        state_class: measurement
-        scan_interval: 60        
-
-      - name: Battery Fault
-        unique_id: Battery_Fault
-        slave: !secret alphaess_modbus_slaveId
-        address: 286
-        input_type: holding
-        data_type: uint32
-        state_class: measurement
-        scan_interval: 60
-        
-        
 # Measurements current power
       # Power to/from GRID
-      - name: Alpha ESS Power Grid
-        unique_id: Alpha_ESS_Power_Grid
+      - name: AlphaESS Power Grid
+        unique_id: AlphaESS_Power_Grid
         slave: !secret alphaess_modbus_slaveId
         address: 33
         input_type: holding
@@ -104,8 +93,8 @@ modbus:
         scale: 1
         precision: 0
 
-      - name: Alpha ESS Power Phase A Grid
-        unique_id: Alpha_ESS_Power_Phase_A_Grid
+      - name: AlphaESS Power Phase A Grid
+        unique_id: AlphaESS_Power_Phase_A_Grid
         slave: !secret alphaess_modbus_slaveId
         address: 27
         input_type: holding
@@ -117,8 +106,8 @@ modbus:
         scale: 1
         precision: 0
 
-      - name: Alpha ESS Power Phase B Grid
-        unique_id: Alpha_ESS_Power_Phase_B_Grid
+      - name: AlphaESS Power Phase B Grid
+        unique_id: AlphaESS_Power_Phase_B_Grid
         slave: !secret alphaess_modbus_slaveId
         address: 29
         input_type: holding
@@ -130,8 +119,8 @@ modbus:
         scale: 1
         precision: 0
 
-      - name: Alpha ESS Power Phase C Grid
-        unique_id: Alpha_ESS_Power_Phase_C_Grid
+      - name: AlphaESS Power Phase C Grid
+        unique_id: AlphaESS_Power_Phase_C_Grid
         slave: !secret alphaess_modbus_slaveId
         address: 31
         input_type: holding
@@ -143,8 +132,8 @@ modbus:
         scale: 1
         precision: 0
 
-      - name: Alpha ESS Voltage Phase A Grid
-        unique_id: Alpha_ESS_Voltage_Phase_A_Grid
+      - name: AlphaESS Voltage Phase A Grid
+        unique_id: AlphaESS_Voltage_Phase_A_Grid
         slave: !secret alphaess_modbus_slaveId
         address: 20
         input_type: holding
@@ -156,8 +145,8 @@ modbus:
         scale: 1
         precision: 0
 
-      - name: Alpha ESS Voltage Phase B Grid
-        unique_id: Alpha_ESS_Voltage_Phase_B_Grid
+      - name: AlphaESS Voltage Phase B Grid
+        unique_id: AlphaESS_Voltage_Phase_B_Grid
         slave: !secret alphaess_modbus_slaveId
         address: 21
         input_type: holding
@@ -169,8 +158,8 @@ modbus:
         scale: 1
         precision: 0
 
-      - name: Alpha ESS Voltage Phase C Grid
-        unique_id: Alpha_ESS_Voltage_Phase_C_Grid
+      - name: AlphaESS Voltage Phase C Grid
+        unique_id: AlphaESS_Voltage_Phase_C_Grid
         slave: !secret alphaess_modbus_slaveId
         address: 22
         input_type: holding
@@ -183,8 +172,8 @@ modbus:
         precision: 0
 
       # Power to/from Battery
-      - name: Alpha ESS Power Battery
-        unique_id: Alpha_ESS_Power_Battery
+      - name: AlphaESS Power Battery
+        unique_id: AlphaESS_Power_Battery
         slave: !secret alphaess_modbus_slaveId
         address: 294
         input_type: holding
@@ -197,8 +186,8 @@ modbus:
         precision: 0
 
       # Power Inverter
-      - name: Alpha ESS Power Inverter
-        unique_id: Alpha_ESS_Power_Inverter
+      - name: AlphaESS Power Inverter
+        unique_id: AlphaESS_Power_Inverter
         slave: !secret alphaess_modbus_slaveId
         address: 1036
         input_type: holding
@@ -211,8 +200,8 @@ modbus:
         precision: 0
 
       # Power of String 1 (connector PV1 on the inverter)
-      - name: Alpha ESS PV1 Power
-        unique_id: Alpha_ESS_PV1_Power
+      - name: AlphaESS PV1 Power
+        unique_id: AlphaESS_PV1_Power
         slave: !secret alphaess_modbus_slaveId
         address: 1055
         input_type: holding
@@ -224,8 +213,8 @@ modbus:
         scale: 1
         precision: 0
         
-      - name: Alpha ESS PV1 Voltage 
-        unique_id: Alpha_ESS_PV1_Voltage
+      - name: AlphaESS PV1 Voltage 
+        unique_id: AlphaESS_PV1_Voltage
         slave: !secret alphaess_modbus_slaveId
         address: 1053
         input_type: holding
@@ -237,8 +226,8 @@ modbus:
         scale: 0.1
         precision: 0
 
-      - name: Alpha ESS PV1 Current 
-        unique_id: Alpha_ESS_PV1_Current
+      - name: AlphaESS PV1 Current 
+        unique_id: AlphaESS_PV1_Current
         slave: !secret alphaess_modbus_slaveId
         address: 1054
         input_type: holding
@@ -251,8 +240,8 @@ modbus:
         precision: 2
         
       # Power of String 2 (connector PV3 on the inverter)
-      - name: Alpha ESS PV2 Power
-        unique_id: Alpha_ESS_PV2_Power
+      - name: AlphaESS PV2 Power
+        unique_id: AlphaESS_PV2_Power
         slave: !secret alphaess_modbus_slaveId
         address: 1059
         input_type: holding
@@ -264,8 +253,8 @@ modbus:
         scale: 1
         precision: 0
         
-      - name: Alpha ESS PV2 Voltage 
-        unique_id: Alpha_ESS_PV2_Voltage
+      - name: AlphaESS PV2 Voltage 
+        unique_id: AlphaESS_PV2_Voltage
         slave: !secret alphaess_modbus_slaveId
         address: 1057
         input_type: holding
@@ -277,8 +266,8 @@ modbus:
         scale: 0.1
         precision: 0
         
-      - name: Alpha ESS PV2 Current 
-        unique_id: Alpha_ESS_PV2_Current
+      - name: AlphaESS PV2 Current 
+        unique_id: AlphaESS_PV2_Current
         slave: !secret alphaess_modbus_slaveId
         address: 1058
         input_type: holding
@@ -291,8 +280,8 @@ modbus:
         precision: 2
 
       # Power of String 3 (connector PV2 on the inverter)
-      - name: Alpha ESS PV3 Power
-        unique_id: Alpha_ESS_PV3_Power
+      - name: AlphaESS PV3 Power
+        unique_id: AlphaESS_PV3_Power
         slave: !secret alphaess_modbus_slaveId
         address: 1063
         input_type: holding
@@ -305,8 +294,8 @@ modbus:
         precision: 0
 
       # Power of String 4 (connector PV4 on the inverter)
-      - name: Alpha ESS PV4 Power
-        unique_id: Alpha_ESS_PV4_Power
+      - name: AlphaESS PV4 Power
+        unique_id: AlphaESS_PV4_Power
         slave: !secret alphaess_modbus_slaveId
         address: 1067
         input_type: holding
@@ -320,8 +309,8 @@ modbus:
 
 # Energy measurements statistic
       # Total Energy Feed to Grid (Meter)
-      - name: Alpha ESS Total Energy Feed to Grid (Meter)
-        unique_id: Alpha_ESS_Total_Energy_Feed_to_Grid_Meter
+      - name: AlphaESS Total Energy Feed to Grid (Meter)
+        unique_id: AlphaESS_Total_Energy_Feed_to_Grid_Meter
         slave: !secret alphaess_modbus_slaveId
         address: 16
         input_type: holding
@@ -334,8 +323,8 @@ modbus:
         precision: 2
 
       # Total Energy Consumption from Grid (Meter)
-      - name: Alpha ESS Total Energy Consumption from Grid (Meter)
-        unique_id: Alpha_ESS_Total_Energy_Consumption_from_Grid_Meter
+      - name: AlphaESS Total Energy Consumption from Grid (Meter)
+        unique_id: AlphaESS_Total_Energy_Consumption_from_Grid_Meter
         slave: !secret alphaess_modbus_slaveId
         address: 18
         input_type: holding
@@ -348,8 +337,8 @@ modbus:
         precision: 2
 
       # Total Energy Feed to Grid (PV)
-      - name: Alpha ESS Total Energy Feed to Grid (PV)
-        unique_id: Alpha_ESS_Total_Energy_Feed_to_Grid_PV
+      - name: AlphaESS Total Energy Feed to Grid (PV)
+        unique_id: AlphaESS_Total_Energy_Feed_to_Grid_PV
         slave: !secret alphaess_modbus_slaveId
         address: 144
         input_type: holding
@@ -362,8 +351,8 @@ modbus:
         precision: 2
 
       # Total Energy Charge Battery
-      - name: Alpha ESS Total Energy Charge Battery
-        unique_id: Alpha_ESS_Total_Energy_Charge_Battery
+      - name: AlphaESS Total Energy Charge Battery
+        unique_id: AlphaESS_Total_Energy_Charge_Battery
         slave: !secret alphaess_modbus_slaveId
         address: 288
         input_type: holding
@@ -376,8 +365,8 @@ modbus:
         precision: 2
 
       # Total Energy Discharge Battery
-      - name: Alpha ESS Total Energy Discharge Battery
-        unique_id: Alpha_ESS_Total_Energy_Discharge_Battery
+      - name: AlphaESS Total Energy Discharge Battery
+        unique_id: AlphaESS_Total_Energy_Discharge_Battery
         slave: !secret alphaess_modbus_slaveId
         address: 290
         input_type: holding
@@ -390,8 +379,8 @@ modbus:
         precision: 2
 
       # Total Energy Charge Battery from Grid
-      - name: Total Energy Charge Battery from Grid
-        unique_id: Alpha_ESS_Total_Energy_Charge_Battery_from_Grid
+      - name: AlphaESS Total Energy Charge Battery from Grid
+        unique_id: AlphaESS_Total_Energy_Charge_Battery_from_Grid
         slave: !secret alphaess_modbus_slaveId
         address: 292
         input_type: holding
@@ -404,8 +393,8 @@ modbus:
         precision: 2
 
       # Total Energy From PV
-      - name: Alpha ESS Total Energy from PV
-        unique_id: Alpha_ESS_Total_Energy_from_PV
+      - name: AlphaESS Total Energy from PV
+        unique_id: AlphaESS_Total_Energy_from_PV
         slave: !secret alphaess_modbus_slaveId
         address: 1086
         input_type: holding
@@ -419,8 +408,8 @@ modbus:
 
 # Battery details
       #SoC
-      - name: Alpha ESS SoC Battery
-        unique_id: Alpha_ESS_SoC_Battery
+      - name: AlphaESS SoC Battery
+        unique_id: AlphaESS_SoC_Battery
         slave: !secret alphaess_modbus_slaveId
         address: 258
         input_type: holding
@@ -432,8 +421,8 @@ modbus:
         scale: 0.1
         precision: 2
 
-      - name: Alpha ESS Battery Min Cell Temp 
-        unique_id: Alpha_ESS_Battery_Min_Cell_Temp
+      - name: AlphaESS Battery Min Cell Temp 
+        unique_id: AlphaESS_Battery_Min_Cell_Temp
         slave: !secret alphaess_modbus_slaveId
         address: 269
         input_type: holding
@@ -445,8 +434,8 @@ modbus:
         scale: 0.1
         precision: 1
 
-      - name: Alpha ESS Battery Max Cell Temp
-        unique_id: Alpha_ESS_Battery_Max_Cell_Temp
+      - name: AlphaESS Battery Max Cell Temp
+        unique_id: AlphaESS_Battery_Max_Cell_Temp
         slave: !secret alphaess_modbus_slaveId
         address: 272
         input_type: holding
@@ -458,8 +447,8 @@ modbus:
         scale: 0.1
         precision: 1
 
-      - name: Alpha ESS Battery Max Charge Current
-        unique_id: Alpha_ESS_Battery_Max_Charge_Current
+      - name: AlphaESS Battery Max Charge Current
+        unique_id: AlphaESS_Battery_Max_Charge_Current
         slave: !secret alphaess_modbus_slaveId
         address: 273
         input_type: holding
@@ -471,8 +460,8 @@ modbus:
         scale: 0.1
         precision: 1
 
-      - name: Alpha ESS Battery Max Discharge Current
-        unique_id: Alpha_ESS_Battery_Max_Discharge_Current
+      - name: AlphaESS Battery Max Discharge Current
+        unique_id: AlphaESS_Battery_Max_Discharge_Current
         slave: !secret alphaess_modbus_slaveId
         address: 274
         input_type: holding
@@ -484,8 +473,8 @@ modbus:
         scale: 0.1
         precision: 1
         
-      - name: Alpha ESS Battery Remaining Time
-        unique_id: Alpha_ESS_Battery_Remaining_Time
+      - name: AlphaESS Battery Remaining Time
+        unique_id: AlphaESS_Battery_Remaining_Time
         slave: !secret alphaess_modbus_slaveId
         address: 295
         input_type: holding
@@ -496,8 +485,8 @@ modbus:
         scale: 1
         precision: 0
 
-      - name: Alpha ESS Battery Voltage 
-        unique_id: Alpha_ESS_Battery_Voltage
+      - name: AlphaESS Battery Voltage 
+        unique_id: AlphaESS_Battery_Voltage
         slave: !secret alphaess_modbus_slaveId
         address: 256
         input_type: holding
@@ -511,8 +500,8 @@ modbus:
 
 # PV settings
       # Feedrate into the grid (percentage of the installed PV-Power)
-      - name: Alpha ESS Max Feed to Grid
-        unique_id: Alpha_ESS_Max_Feed_to_Grid
+      - name: AlphaESS Max Feed to Grid
+        unique_id: AlphaESS_Max_Feed_to_Grid
         slave: !secret alphaess_modbus_slaveId
         address: 2048
         input_type: holding
@@ -525,8 +514,8 @@ modbus:
         
 # Grid meter
       # Rate of Grid Meter
-      - name: Alpha ESS CT Rate Grid Meter
-        unique_id: Alpha_ESS_CT_Rate_Grid_Meter
+      - name: AlphaESS CT Rate Grid Meter
+        unique_id: AlphaESS_CT_Rate_Grid_Meter
         slave: !secret alphaess_modbus_slaveId
         address: 1
         input_type: holding
@@ -537,8 +526,8 @@ modbus:
         precision: 1
 
       # Rate of PV Meter
-      - name: Alpha ESS CT Rate PV Meter
-        unique_id: Alpha_ESS_CT_Rate_PV_Meter
+      - name: AlphaESS CT Rate PV Meter
+        unique_id: AlphaESS_CT_Rate_PV_Meter
         slave: !secret alphaess_modbus_slaveId
         address: 129
         input_type: holding
@@ -550,8 +539,8 @@ modbus:
 
 # Charging
       # Time Period Control
-      - name: Alpha ESS Charging Time Period Control
-        unique_id: Alpha_ESS_Charging_Time_Period_Control
+      - name: AlphaESS Charging Time Period Control
+        unique_id: AlphaESS_Charging_Time_Period_Control
         slave: !secret alphaess_modbus_slaveId
         address: 2127
         input_type: holding
@@ -562,8 +551,8 @@ modbus:
         precision: 0
 
       # Charging Cutoff SoC
-      - name: Alpha ESS Charging Cutoff SoC
-        unique_id: Alpha_ESS_Charging_Cutoff_SoC
+      - name: AlphaESS Charging Cutoff SoC
+        unique_id: AlphaESS_Charging_Cutoff_SoC
         slave: !secret alphaess_modbus_slaveId
         address: 2133
         input_type: holding
@@ -575,8 +564,8 @@ modbus:
         precision: 0
 
       # Charging Period 1 Start Hour
-      - name: Alpha ESS Charging Period 1 Start Hour
-        unique_id: Alpha_ESS_Charging_Period_1_Start_Hour
+      - name: AlphaESS Charging Period 1 Start Hour
+        unique_id: AlphaESS_Charging_Period_1_Start_Hour
         slave: !secret alphaess_modbus_slaveId
         address: 2134
         input_type: holding
@@ -588,8 +577,8 @@ modbus:
         precision: 0
 
       # Charging Period 1 Stop Hour
-      - name: Alpha ESS Charging Period 1 Stop Hour
-        unique_id: Alpha_ESS_Charging_Period_1_Stop_Hour
+      - name: AlphaESS Charging Period 1 Stop Hour
+        unique_id: AlphaESS_Charging_Period_1_Stop_Hour
         slave: !secret alphaess_modbus_slaveId
         address: 2135
         input_type: holding
@@ -601,8 +590,8 @@ modbus:
         precision: 0
 
       # Charging Period 2 Start Hour
-      - name: Alpha ESS Charging Period 2 Start Hour
-        unique_id: Alpha_ESS_Charging_Period_2_Start_Hour
+      - name: AlphaESS Charging Period 2 Start Hour
+        unique_id: AlphaESS_Charging_Period_2_Start_Hour
         slave: !secret alphaess_modbus_slaveId
         address: 2136
         input_type: holding
@@ -614,8 +603,8 @@ modbus:
         precision: 0
 
       # Charging Period 2 Stop Hour
-      - name: Alpha ESS Charging Period 2 Stop Hour
-        unique_id: Alpha_ESS_Charging_Period_2_Stop_Hour
+      - name: AlphaESS Charging Period 2 Stop Hour
+        unique_id: AlphaESS_Charging_Period_2_Stop_Hour
         slave: !secret alphaess_modbus_slaveId
         address: 2137
         input_type: holding
@@ -627,8 +616,8 @@ modbus:
         precision: 0
 
       # Charging Period 1 Start Minute
-      - name: Alpha ESS Charging Period 1 Start Minute
-        unique_id: Alpha_ESS_Charging_Period_1_Start_Minute
+      - name: AlphaESS Charging Period 1 Start Minute
+        unique_id: AlphaESS_Charging_Period_1_Start_Minute
         slave: !secret alphaess_modbus_slaveId
         address: 2142
         input_type: holding
@@ -640,8 +629,8 @@ modbus:
         precision: 0
 
       # Charging Period 1 Stop Minute
-      - name: Alpha ESS Charging Period 1 Stop Minute
-        unique_id: Alpha_ESS_Charging_Period_1_Stop_Minute
+      - name: AlphaESS Charging Period 1 Stop Minute
+        unique_id: AlphaESS_Charging_Period_1_Stop_Minute
         slave: !secret alphaess_modbus_slaveId
         address: 2143
         input_type: holding
@@ -653,8 +642,8 @@ modbus:
         precision: 0
 
       # Charging Period 2 Start Minute
-      - name: Alpha ESS Charging Period 2 Start Minute
-        unique_id: Alpha_ESS_Charging_Period_2_Start_Minute
+      - name: AlphaESS Charging Period 2 Start Minute
+        unique_id: AlphaESS_Charging_Period_2_Start_Minute
         slave: !secret alphaess_modbus_slaveId
         address: 2144
         input_type: holding
@@ -666,8 +655,8 @@ modbus:
         precision: 0
 
       # Charging Period 2 Stop Minute
-      - name: Alpha ESS Charging Period 2 Stop Minute
-        unique_id: Alpha_ESS_Charging_Period_2_Stop_Minute
+      - name: AlphaESS Charging Period 2 Stop Minute
+        unique_id: AlphaESS_Charging_Period_2_Stop_Minute
         slave: !secret alphaess_modbus_slaveId
         address: 2145
         input_type: holding
@@ -680,8 +669,8 @@ modbus:
 
 # Discharging
       # Discharging Cutoff SoC
-      - name: Alpha ESS Discharging Cutoff SoC
-        unique_id: Alpha_ESS_Discharging_Cutoff_SoC
+      - name: AlphaESS Discharging Cutoff SoC
+        unique_id: AlphaESS_Discharging_Cutoff_SoC
         slave: !secret alphaess_modbus_slaveId
         address: 2128
         input_type: holding
@@ -694,8 +683,8 @@ modbus:
 
 # Dispatch
       # Dispatch start
-      - name: Alpha ESS Dispatch Start
-        unique_id: Alpha_ESS_Dispatch_Start
+      - name: AlphaESS Dispatch Start
+        unique_id: AlphaESS_Dispatch_Start
         slave: !secret alphaess_modbus_slaveId
         address: 2176
         input_type: holding
@@ -706,8 +695,8 @@ modbus:
         precision: 0
 
       # Dispatch active power (32000 Offset, < 32000 charge, > 32000 discharge)
-      - name: Alpha ESS Dispatch Active Power
-        unique_id: Alpha_ESS_Dispatch_Active_Power
+      - name: AlphaESS Dispatch Active Power
+        unique_id: AlphaESS_Dispatch_Active_Power
         slave: !secret alphaess_modbus_slaveId
         address: 2177
         input_type: holding
@@ -720,8 +709,8 @@ modbus:
         precision: 0
 
       # Dispatch mode
-      - name: Alpha ESS Dispatch Mode
-        unique_id: Alpha_ESS_Dispatch_Mode
+      - name: AlphaESS Dispatch Mode
+        unique_id: AlphaESS_Dispatch_Mode
         slave: !secret alphaess_modbus_slaveId
         address: 2181
         input_type: holding
@@ -732,8 +721,8 @@ modbus:
         precision: 0
 
       # Dispatch SoC (0.4%/bit)
-      - name: Alpha ESS Dispatch SoC
-        unique_id: Alpha_ESS_Dispatch_SoC
+      - name: AlphaESS Dispatch SoC
+        unique_id: AlphaESS_Dispatch_SoC
         slave: !secret alphaess_modbus_slaveId
         address: 2182
         input_type: holding
@@ -745,8 +734,8 @@ modbus:
         precision: 0
 
       # Dispatch Time
-      - name: Alpha ESS Dispatch Time
-        unique_id: Alpha_ESS_Dispatch_Time
+      - name: AlphaESS Dispatch Time
+        unique_id: AlphaESS_Dispatch_Time
         slave: !secret alphaess_modbus_slaveId
         address: 2183
         input_type: holding
@@ -760,8 +749,8 @@ modbus:
 # Helpers
 input_number:
 # Helper for Discharging Cutoff SoC
-  alpha_ess_helper_discharging_cutoff_soc:
-    name: "Alpha ESS Discharging Cutoff SoC"
+  alphaess_helper_discharging_cutoff_soc:
+    name: "AlphaESS Discharging Cutoff SoC"
     initial: 11
     min: 0
     max: 100
@@ -771,8 +760,8 @@ input_number:
     step: 1
 
 # Helper for Max Feed To Grid
-  alpha_ess_helper_max_feed_to_grid:
-    name: "Alpha ESS Max Feed To Grid"
+  alphaess_helper_max_feed_to_grid:
+    name: "AlphaESS Max Feed To Grid"
     initial: 100
     min: 0
     max: 100
@@ -782,8 +771,8 @@ input_number:
     step: 1
 
 # Helper for Charging Now Fixed Hour
-  alpha_ess_charging_now_fixed_hour:
-    name: Alpha ESS Charging Now Fixed Hour
+  alphaess_charging_now_fixed_hour:
+    name: AlphaESS Charging Now Fixed Hour
     initial: 0
     min: 0
     max: 23
@@ -792,57 +781,57 @@ input_number:
 
 input_button:
 # Helper for Charging Default
-  alpha_ess_helper_charging_default:
-    name: Alpha ESS Charging Default
+  alphaess_helper_charging_default:
+    name: AlphaESS Charging Default
     icon: mdi:button-pointer
 
 # Helper for Charging Now
-  alpha_ess_helper_charging_now:
-    name: Alpha ESS Charging Now
+  alphaess_helper_charging_now:
+    name: AlphaESS Charging Now
     icon: mdi:button-pointer
 
 # Helper for Dispatch Modes
-  alpha_ess_helper_dispatch_initiate:
-    name: Alpha ESS Dispatch Initiate
+  alphaess_helper_dispatch_initiate:
+    name: AlphaESS Dispatch Initiate
     icon: mdi:button-pointer
-  alpha_ess_helper_dispatch_reset:
-    name: Alpha ESS Dispatch Reset
+  alphaess_helper_dispatch_reset:
+    name: AlphaESS Dispatch Reset
     icon: mdi:button-pointer
 
 sensor:
 # Helper for Power Diagram
-  - name: Alpha ESS Energy Feed to Grid (Meter) (Derivative)
+  - name: AlphaESS Energy Feed to Grid (Meter) (Derivative)
     platform: derivative
-    source: sensor.alpha_ess_total_energy_feed_to_grid_meter_with_heartbeat
+    source: sensor.alphaess_total_energy_feed_to_grid_meter_with_heartbeat
     round: 2
     unit_time: h
     time_window: "00:01:00"
 
 # Helpers for Today's Calculations
 utility_meter:
-  alpha_ess_todays_energy_consumption_from_grid_meter:
-    name: Alpha ESS Today's Energy Consumption from Grid (Meter)
-    source: sensor.alpha_ess_total_energy_consumption_from_grid_meter
+  alphaess_todays_energy_consumption_from_grid_meter:
+    name: AlphaESS Today's Energy Consumption from Grid (Meter)
+    source: sensor.alphaess_total_energy_consumption_from_grid_meter
     cycle: daily
-  alpha_ess_todays_energy_feed_to_grid_meter:
-    name: Alpha ESS Today's Energy Feed to Grid (Meter)
-    source: sensor.alpha_ess_total_energy_feed_to_grid_meter
+  alphaess_todays_energy_feed_to_grid_meter:
+    name: AlphaESS Today's Energy Feed to Grid (Meter)
+    source: sensor.alphaess_total_energy_feed_to_grid_meter
     cycle: daily
-  alpha_ess_todays_energy_charge_battery:
-    name: Alpha ESS Today's Energy Charge Battery
-    source: sensor.alpha_ess_total_energy_charge_battery
+  alphaess_todays_energy_charge_battery:
+    name: AlphaESS Today's Energy Charge Battery
+    source: sensor.alphaess_total_energy_charge_battery
     cycle: daily
-  alpha_ess_todays_energy_discharge_battery:
-    name: Alpha ESS Today's Energy Discharge Battery
-    source: sensor.alpha_ess_total_energy_discharge_battery
+  alphaess_todays_energy_discharge_battery:
+    name: AlphaESS Today's Energy Discharge Battery
+    source: sensor.alphaess_total_energy_discharge_battery
     cycle: daily
-  alpha_ess_todays_energy_from_pv:
-    name: Alpha ESS Today's Energy From PV
-    source: sensor.alpha_ess_total_energy_from_pv
+  alphaess_todays_energy_from_pv:
+    name: AlphaESS Today's Energy From PV
+    source: sensor.alphaess_total_energy_from_pv
     cycle: daily
-  alpha_ess_todays_house_load:
-    name: Alpha ESS Today's House Load 
-    source: sensor.alpha_ess_total_house_load
+  alphaess_todays_house_load:
+    name: AlphaESS Today's House Load 
+    source: sensor.alphaess_total_house_load
     cycle: daily
 
 # Automations
@@ -851,12 +840,12 @@ automation:
 #   - period 1 = 2-6am
 #   - period 2 = 0-0 (disabled)
 #   - cutoff 100%
-  - id: "Alpha_ESS_Charging_Default"
-    alias: Alpha ESS Charging Default
+  - id: "AlphaESS_Charging_Default"
+    alias: AlphaESS Charging Default
     trigger:
       - platform: state
         entity_id:
-          - input_button.alpha_ess_helper_charging_default
+          - input_button.alphaess_helper_charging_default
     condition: []
     action:
       - service: modbus.write_register
@@ -925,12 +914,12 @@ automation:
 #   - period 1 = 0-0 (disabled)
 #   - period 2 = now for the next 2 hours
 #   - cutoff 100%
-  - id: "Alpha_ESS_Charging_Now"
-    alias: Alpha ESS Charging Now
+  - id: "AlphaESS_Charging_Now"
+    alias: AlphaESS Charging Now
     trigger:
       - platform: state
         entity_id:
-          - input_button.alpha_ess_helper_charging_now
+          - input_button.alphaess_helper_charging_now
     condition: []
     action:
       - service: modbus.write_register
@@ -965,7 +954,7 @@ automation:
           value: "{{now().hour}}"
       - service: input_number.set_value
         target:
-          entity_id: input_number.alpha_ess_charging_now_fixed_hour
+          entity_id: input_number.alphaess_charging_now_fixed_hour
         data: # Fix day rollover
           value: >-
             {% if now().hour == 22 %}
@@ -980,7 +969,7 @@ automation:
           hub: modbuspvsystem
           address: 2137 # Charging Period 2 Stop Hour
           slave: !secret alphaess_modbus_slaveId
-          value: "{{ (states('input_number.alpha_ess_charging_now_fixed_hour')|int) }}"
+          value: "{{ (states('input_number.alphaess_charging_now_fixed_hour')|int) }}"
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
@@ -1008,15 +997,15 @@ automation:
       - delay: "02:00" # Wait for 2 hours
       - service: automation.trigger
         target:
-          entity_id: automation.alpha_ess_charging_default # Reset to Charging Default
+          entity_id: automation.alphaess_charging_default # Reset to Charging Default
     mode: single
 
-  - id: "Alpha_ESS_Discharging_Cutoff_SoC"
-    alias: Alpha ESS Discharging Cutoff SoC
+  - id: "AlphaESS_Discharging_Cutoff_SoC"
+    alias: AlphaESS Discharging Cutoff SoC
     trigger:
       - platform: state
         entity_id:
-          - input_number.alpha_ess_helper_discharging_cutoff_soc
+          - input_number.alphaess_helper_discharging_cutoff_soc
     condition: []
     action:
       - service: modbus.write_register
@@ -1024,15 +1013,15 @@ automation:
           hub: modbuspvsystem
           address: 2128
           slave: !secret alphaess_modbus_slaveId
-          value: "{{ (states('input_number.alpha_ess_helper_discharging_cutoff_soc')|int)}}"
+          value: "{{ (states('input_number.alphaess_helper_discharging_cutoff_soc')|int)}}"
     mode: single
 
-  - id: "Alpha_ESS_Max_Feed_To_Grid"
-    alias: Alpha ESS Max Feed To Grid
+  - id: "AlphaESS_Max_Feed_To_Grid"
+    alias: AlphaESS Max Feed To Grid
     trigger:
       - platform: state
         entity_id:
-          - input_number.alpha_ess_helper_max_feed_to_grid
+          - input_number.alphaess_helper_max_feed_to_grid
     condition: []
     action:
       - service: modbus.write_register
@@ -1040,15 +1029,15 @@ automation:
           hub: modbuspvsystem
           address: 2048
           slave: !secret alphaess_modbus_slaveId
-          value: "{{ (states('input_number.alpha_ess_helper_max_feed_to_grid')|int)}}"
+          value: "{{ (states('input_number.alphaess_helper_max_feed_to_grid')|int)}}"
     mode: single
 
-  - id: "Alpha_ESS_Dispatch_Initiate"
-    alias: Alpha ESS Dispatch Initiate
+  - id: "AlphaESS_Dispatch_Initiate"
+    alias: AlphaESS Dispatch Initiate
     trigger:
       - platform: state
         entity_id:
-          - input_button.alpha_ess_helper_dispatch_initiate
+          - input_button.alphaess_helper_dispatch_initiate
     condition: []
     action:
       - service: modbus.write_register
@@ -1087,12 +1076,12 @@ automation:
           value: 2
     mode: single
 
-  - id: "Alpha_ESS_Dispatch_Reset"
-    alias: Alpha ESS Dispatch Reset
+  - id: "AlphaESS_Dispatch_Reset"
+    alias: AlphaESS Dispatch Reset
     trigger:
       - platform: state
         entity_id:
-          - input_button.alpha_ess_helper_dispatch_reset
+          - input_button.alphaess_helper_dispatch_reset
     condition: []
     action:
       - service: modbus.write_register
@@ -1135,45 +1124,24 @@ automation:
 template:
   - sensor:
       # Total House Load
-      - name: Alpha ESS Total House Load
-        unique_id: Alpha_ESS_Total_House_Load
+      - name: AlphaESS Total House Load
+        unique_id: AlphaESS_Total_House_Load
         unit_of_measurement: "kWh"
-        state: "{{ states('sensor.Alpha_ESS_Total_Energy_From_PV')|float + states('sensor.Alpha_ESS_Total_Energy_Consumption_From_Grid_Meter')|float - states('sensor.Alpha_ESS_Total_Energy_Feed_To_Grid_Meter')|float  }}"
+        state: "{{ states('sensor.AlphaESS_Total_Energy_From_PV')|float + states('sensor.AlphaESS_Total_Energy_Consumption_From_Grid_Meter')|float - states('sensor.AlphaESS_Total_Energy_Feed_To_Grid_Meter')|float }}"
       # Current PV Production
-      - name: Alpha ESS Current PV Production
-        unique_id: Alpha_ESS_Current_PV_Production
+      - name: AlphaESS Current PV Production
+        unique_id: AlphaESS_Current_PV_Production
         unit_of_measurement: "W"
-        state: "{{ (states('sensor.Alpha_ESS_PV1_Power')|int + states('sensor.Alpha_ESS_PV2_Power')|int + states('sensor.Alpha_ESS_PV3_Power')|int + states('sensor.Alpha_ESS_PV4_Power')|int)|int }}"
+        state: "{{ (states('sensor.AlphaESS_PV1_Power')|int + states('sensor.AlphaESS_PV2_Power')|int + states('sensor.AlphaESS_PV3_Power')|int + states('sensor.AlphaESS_PV4_Power')|int)|int }}"
      # Current House Load
-      - name: Alpha ESS Current House Load
-        unique_id: Alpha_ESS_Current_House_Load
+      - name: AlphaESS Current House Load
+        unique_id: AlphaESS_Current_House_Load
         unit_of_measurement: "W"
-        state: "{{ (states('sensor.Alpha_ESS_Power_Inverter')|float|round(0) + states('sensor.Alpha_ESS_Power_Grid')| float|round(0)) }}"
+        state: "{{ (states('sensor.AlphaESS_Power_Inverter')|float|round(0) + states('sensor.AlphaESS_Power_Grid')| float|round(0)) }}"
      # Total Energy Feed to Grid with Heartbeat
-      - name: Alpha ESS Total Energy Feed to Grid (Meter) with Heartbeat
-        unique_id: Alpha_ESS_Total_Energy_Feed_to_Grid_Meter_with_Heartbeat
+      - name: AlphaESS Total Energy Feed to Grid (Meter) with Heartbeat
+        unique_id: AlphaESS_Total_Energy_Feed_to_Grid_Meter_with_Heartbeat
         unit_of_measurement: "kWh"
-        state: "{{ (states('sensor.Alpha_ESS_Total_Energy_Feed_to_Grid_Meter')|float) }}"
+        state: "{{ (states('sensor.AlphaESS_Total_Energy_Feed_to_Grid_Meter')|float) }}"
         attributes:
             minute_counter: "{{ now().minute }}"
-     # Battery Status
-      - name: "Battery Status"
-        state: "{{ states('sensor.battery_fault_description') }}"
-     # Inverter Status 
-      - name: "Inverter Mode"
-        state: >
-          {% set status_map = {
-            0: 'Wait Mode',
-            1: 'Online Mode',
-            2: 'UPS Mode',
-            3: 'Bypass Mode',
-            4: 'Fault Mode',
-            5: 'DC Mode',
-            6: 'SelfTest Mode',
-            7: 'Check Mode',
-            8: 'Update Master Mode',
-            9: 'Update Slave Mode',
-            10: 'Update ARM Mode'} %}
-          {% set status_value = states('sensor.inverter_status')|int %}
-          {{ status_map[status_value] if status_value in status_map else 'Unknown' }}
-
