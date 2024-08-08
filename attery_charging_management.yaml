@@ -18,9 +18,6 @@ homeassistant:
     sensor.required_charging_time:
       friendly_name: "Required Charging Time"
       icon: mdi:timer
-    sensor.plan_for_tomorrow_overview:
-      friendly_name: "Plan for Tomorrow Overview"
-      icon: mdi:calendar
     sensor.remaining_capacity:
       friendly_name: "Remaining Battery Capacity"
       icon: mdi:battery
@@ -44,15 +41,6 @@ homeassistant:
       icon: mdi:battery-alert
 
 input_number:
-  average_power_usage:
-    name: Average Power Usage
-    initial: 10
-    min: 0
-    max: 20
-    step: 0.1
-    unit_of_measurement: 'kWh'
-    icon: mdi:flash
-
   solar_dampener:
     name: Solar Dampener
     initial: 100
@@ -62,20 +50,6 @@ input_number:
     unit_of_measurement: '%'
     icon: mdi:weather-sunny
 
-  previous_day_soc:
-    name: Previous Day SOC
-    initial: 0
-    min: 0
-    max: 100
-    step: 0.1
-    unit_of_measurement: '%'
-    icon: mdi:battery
-
-input_text:
-  weather_forecast_10am_tomorrow:
-    name: Weather Forecast 10 AM Tomorrow
-    initial: "Sunny"
-
 input_boolean:
   charging_in_progress:
     name: Charging in Progress
@@ -84,6 +58,7 @@ input_boolean:
 sensor:
   - platform: template
     sensors:
+      # Adjusted Solcast Forecast for Today based on the Solar Dampener
       adjusted_solcast_total_forecast_today:
         friendly_name: "Adjusted Solcast Total Forecast Today"
         unit_of_measurement: 'kWh'
@@ -92,6 +67,7 @@ sensor:
           {% set dampener = states('input_number.solar_dampener')|float(0) / 100 %}
           {{ forecast * dampener }}
 
+      # Adjusted Solcast Remaining Forecast for Today based on the Solar Dampener
       adjusted_solcast_remaining_forecast_today:
         friendly_name: "Adjusted Solcast Remaining Forecast Today"
         unit_of_measurement: 'kWh'
@@ -100,6 +76,7 @@ sensor:
           {% set dampener = states('input_number.solar_dampener')|float(0) / 100 %}
           {{ forecast * dampener }}
 
+      # Adjusted Solcast Power for the Next Hour based on the Solar Dampener
       adjusted_solcast_power_next_hour:
         friendly_name: "Adjusted Solcast Power Next Hour"
         unit_of_measurement: 'W'
@@ -108,6 +85,7 @@ sensor:
           {% set dampener = states('input_number.solar_dampener')|float(0) / 100 %}
           {{ forecast * dampener }}
 
+      # Adjusted Solcast Power for the Next 30 Minutes based on the Solar Dampener
       adjusted_solcast_power_next_30_mins:
         friendly_name: "Adjusted Solcast Power Next 30 Mins"
         unit_of_measurement: 'W'
@@ -116,6 +94,7 @@ sensor:
           {% set dampener = states('input_number.solar_dampener')|float(0) / 100 %}
           {{ forecast * dampener }}
 
+      # Dynamic Charging Rate based on Battery Temperature
       dynamic_charging_rate:
         friendly_name: "Dynamic Charging Rate"
         unit_of_measurement: 'kW'
@@ -130,6 +109,7 @@ sensor:
             {{ base_rate }}
           {% endif %}
 
+      # Required Energy to Fully Charge the Battery
       required_energy:
         friendly_name: "Required Energy"
         unit_of_measurement: 'kWh'
@@ -137,6 +117,7 @@ sensor:
           {% set soc = states('sensor.alpha_ess_soc_battery')|float(0) %}
           {{ (100 - soc) / 100 * 15.6 }}
 
+      # Required Charging Time based on Required Energy and Dynamic Charging Rate
       required_charging_time:
         friendly_name: "Required Charging Time"
         unit_of_measurement: 'hours'
@@ -146,12 +127,13 @@ sensor:
           {% set forecast_remaining = states('sensor.adjusted_solcast_remaining_forecast_today')|float(0) %}
           {% if forecast_remaining < required_energy %}
             {% set required_time = required_energy / dynamic_rate %}
-            {{ required_time + 1 }}
+            {{ required_time + 1 }}  # Adding 1 hour buffer
           {% else %}
             {% set required_time = required_energy / dynamic_rate %}
             {{ required_time }}
           {% endif %}
 
+      # Adjusted Required Energy after accounting for Solar Forecast
       adjusted_required_energy:
         friendly_name: "Adjusted Required Energy"
         unit_of_measurement: 'kWh'
@@ -160,14 +142,7 @@ sensor:
           {% set forecast_remaining = states('sensor.adjusted_solcast_remaining_forecast_today')|float(0) %}
           {{ required_energy - forecast_remaining }}
 
-      plan_for_tomorrow_overview:
-        friendly_name: "Plan for Tomorrow Overview"
-        value_template: >
-          {% set soc = states('input_number.previous_day_soc')|float(0) %}
-          {% set forecast = states('sensor.adjusted_solcast_forecast_tomorrow')|float(0) %}
-          {% set weather = states('input_text.weather_forecast_10am_tomorrow') %}
-          {{ "SOC: " ~ soc ~ "%, Solar Forecast: " ~ forecast ~ " kWh, Weather: " ~ weather }}
-
+      # Remaining Battery Capacity in kWh
       remaining_capacity:
         friendly_name: "Remaining Capacity"
         unit_of_measurement: 'kWh'
@@ -175,9 +150,9 @@ sensor:
           {% set soc = states('sensor.alpha_ess_soc_battery')|float(0) %}
           {{ 15.6 * (soc / 100) }}
 
+      # Optimal Start Time for Charging based on Required Charging Time
       optimal_start_time:
         friendly_name: "Optimal Start Time"
-        unit_of_measurement: 'hours'
         value_template: >
           {% set required_time = states('sensor.required_charging_time')|float(0) %}
           {% set optimal_time = 16 - required_time %}
@@ -185,20 +160,19 @@ sensor:
           {% set minutes = ((optimal_time - hours) * 60)|int %}
           {{ '%02d:%02d' % (hours, minutes) }}
 
+      # Current Time in HH:MM format
       current_time:
         friendly_name: "Current Time"
-        unit_of_measurement: 'hours'
         value_template: >
-          {% set now_time = now().hour + now().minute / 60 %}
           {% set hours = now().hour %}
           {% set minutes = now().minute %}
           {{ '%02d:%02d' % (hours, minutes) }}
 
+      # Condition to Check if Charging is Needed
       charging_condition:
         friendly_name: "Charging Condition"
         value_template: >
           {% set soc = states('sensor.alpha_ess_soc_battery')|float(0) %}
-          {% set avg_usage = states('input_number.average_power_usage')|float(0) %}
           {% set remaining_capacity = 15.6 * (1 - soc / 100) %}
           {% set forecast_remaining = states('sensor.adjusted_solcast_remaining_forecast_today')|float(0) %}
           {% set next_hour_power = states('sensor.adjusted_solcast_power_next_hour')|float(0) %}
@@ -209,6 +183,7 @@ sensor:
           {% set optimal_start_time = end_time - required_time %}
           {{ (remaining_capacity > 0 and (forecast_remaining >= remaining_capacity or soc < 100) and (next_hour_power > 0 or next_30min_power > 0) and now_time >= optimal_start_time) or is_state('input_boolean.charging_in_progress', 'on') }}
 
+      # Forecast Remaining Energy for Today
       forecast_remaining:
         friendly_name: "Forecast Remaining"
         unit_of_measurement: 'kWh'
@@ -217,6 +192,7 @@ sensor:
 binary_sensor:
   - platform: template
     sensors:
+      # Binary Sensor to Indicate if Battery is Charging
       battery_charging:
         friendly_name: "Battery Charging"
         value_template: >
@@ -229,49 +205,31 @@ binary_sensor:
           {% endif %}
 
 automation:
-  - alias: Capture Previous Day SOC
-    trigger:
-      - platform: time
-        at: '09:59:00'
-    action:
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.previous_day_soc
-          value: "{{ states('sensor.alpha_ess_soc_battery') | float(0) }}"
-
-  - alias: Update Weather Forecast 10 AM Tomorrow
-    trigger:
-      - platform: time
-        at: '00:10:00'
-    action:
-      - service: weather.get_forecasts
-        data:
-          entity_id: weather.forecast_matheson_road
-      - delay: '00:00:05'
-      - service: input_text.set_value
-        data:
-          entity_id: input_text.weather_forecast_10am_tomorrow
-          value: "Sunny"  # Placeholder until actual forecast data is integrated
-
+  # Manage Battery Charging Automation
   - alias: Manage Battery Charging
     trigger:
+      # Trigger Every 10 Minutes
       - platform: time_pattern
         minutes: "/10"
+      # Trigger When Battery SOC Changes
       - platform: state
         entity_id: sensor.alpha_ess_soc_battery
+      # Trigger When Adjusted Solar Forecast Changes
       - platform: state
         entity_id: sensor.adjusted_solcast_remaining_forecast_today
+      # Trigger When Battery Temperature Changes
       - platform: state
         entity_id: sensor.alpha_ess_battery_min_cell_temp_2
+      # Trigger When Solar Dampener Changes
       - platform: state
-        entity_id: input_number.solar_dampener  # Trigger when solar dampener changes
+        entity_id: input_number.solar_dampener
     condition:
       condition: and
       conditions:
+        # Check if Charging Condition is Met
         - condition: template
           value_template: >
             {% set soc = states('sensor.alpha_ess_soc_battery')|float(0) %}
-            {% set avg_usage = states('input_number.average_power_usage')|float(0) %}
             {% set remaining_capacity = 15.6 * (1 - soc / 100) %}
             {% set forecast_remaining = states('sensor.adjusted_solcast_remaining_forecast_today')|float(0) %}
             {% set next_hour_power = states('sensor.adjusted_solcast_power_next_hour')|float(0) %}
@@ -282,15 +240,17 @@ automation:
             {% set optimal_start_time = end_time - required_time %}
             {{ (remaining_capacity > 0 and (forecast_remaining >= remaining_capacity or soc < 100) and (next_hour_power > 0 or next_30min_power > 0) and now_time >= optimal_start_time) or is_state('input_boolean.charging_in_progress', 'on') }}
     action:
+      - delay: '00:00:05'
+      # Turn On Charging in Progress Indicator
       - service: input_boolean.turn_on
         data:
           entity_id: input_boolean.charging_in_progress
+      # Debug Information
       - service: persistent_notification.create
         data:
           title: "Battery Charging Debug"
           message: >
             SOC: {{ states('sensor.alpha_ess_soc_battery') }}
-            Average Usage: {{ states('input_number.average_power_usage') }}
             Remaining Capacity: {{ 15.6 * (1 - (states('sensor.alpha_ess_soc_battery')|float(0) / 100)) }}
             Forecast Remaining: {{ states('sensor.adjusted_solcast_remaining_forecast_today') }}
             Next Hour Power: {{ states('sensor.adjusted_solcast_power_next_hour') }}
@@ -301,6 +261,7 @@ automation:
             Optimal Start Time: {{ states('sensor.optimal_start_time') }}
             Charging In Progress: {{ states('input_boolean.charging_in_progress') }}
 
+      # Send Modbus Commands to Start Charging
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
@@ -350,14 +311,17 @@ automation:
           slave: !secret alphaess_modbus_slaveId
           value: 0
 
+  # Stop Battery Charging Automation at 16:00
   - alias: Stop Battery Charging
     trigger:
       - platform: time
         at: '16:00:00'
     action:
+      # Turn Off Charging in Progress Indicator
       - service: input_boolean.turn_off
         data:
           entity_id: input_boolean.charging_in_progress
+      # Send Modbus Commands to Stop Charging
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
