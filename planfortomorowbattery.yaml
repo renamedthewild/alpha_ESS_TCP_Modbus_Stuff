@@ -1,0 +1,103 @@
+input_number:
+  average_power_usage:
+    name: Average Power Usage
+    initial: 10
+    min: 0
+    max: 20
+    step: 0.1
+    unit_of_measurement: 'kWh'
+    icon: mdi:flash
+
+  previous_day_soc:
+    name: Previous Day SOC
+    initial: 0
+    min: 0
+    max: 100
+    step: 0.1
+    unit_of_measurement: '%'
+    icon: mdi:battery
+
+sensor:
+  - platform: template
+    sensors:
+      # Adjusted Solcast Forecast for Tomorrow based on the Solar Dampener
+      adjusted_solcast_forecast_tomorrow:
+        friendly_name: "Adjusted Solcast Forecast Tomorrow"
+        unit_of_measurement: 'kWh'
+        value_template: >
+          {% set forecast = states('sensor.solcast_pv_forecast_forecast_tomorrow')|float(0) %}
+          {% set dampener = states('input_number.solar_dampener')|float(0) / 100 %}
+          {{ forecast * dampener }}
+
+      # Plan for Tomorrow Overview
+      plan_for_tomorrow_overview:
+        friendly_name: "Plan for Tomorrow Overview"
+        value_template: >
+          {% set soc = states('input_number.previous_day_soc')|float(0) %}
+          {% set forecast = states('sensor.adjusted_solcast_forecast_tomorrow')|float(0) %}
+          {% set avg_usage = states('input_number.average_power_usage')|float(0) %}
+          {% set required_energy = (100 - soc) / 100 * 15.6 %}
+          {% set adjusted_solar = forecast - avg_usage %}
+          {% set dynamic_rate = 8.192 %}
+          {% set required_time = (required_energy - adjusted_solar) / dynamic_rate %}
+          {% set optimal_start_time = 16 - required_time %}
+          # Ensure the optimal start time is within the 10:00 to 16:00 window
+          {% if optimal_start_time < 10 %}
+            {% set optimal_start_time = 10 %}
+          {% elif optimal_start_time > 16 %}
+            {% set optimal_start_time = 16 %}
+          {% endif %}
+          {% set hours = optimal_start_time|int %}
+          {% set minutes = ((optimal_start_time - hours) * 60)|int %}
+          {{ "SOC: " ~ soc ~ "%, Solar Forecast: " ~ forecast ~ " kWh, Average Usage: " ~ avg_usage ~ " kWh, Required Energy: " ~ required_energy ~ " kWh, Optimal Start Time: " ~ '%02d:%02d' % (hours, minutes) }}
+
+      # Required Energy for Tomorrow
+      plan_for_tomorrow_required_energy:
+        friendly_name: "Plan for Tomorrow Required Energy"
+        unit_of_measurement: 'kWh'
+        value_template: >
+          {% set soc = states('input_number.previous_day_soc')|float(0) %}
+          {{ (100 - soc) / 100 * 15.6 }}
+
+      # Adjusted Solar for Tomorrow
+      plan_for_tomorrow_adjusted_solar:
+        friendly_name: "Plan for Tomorrow Adjusted Solar"
+        unit_of_measurement: 'kWh'
+        value_template: >
+          {% set forecast = states('sensor.adjusted_solcast_forecast_tomorrow')|float(0) %}
+          {% set avg_usage = states('input_number.average_power_usage')|float(0) %}
+          {{ forecast - avg_usage }}
+
+      # Optimal Start Time for Tomorrow
+      plan_for_tomorrow_optimal_start_time:
+        friendly_name: "Plan for Tomorrow Optimal Start Time"
+        value_template: >
+          {% set soc = states('input_number.previous_day_soc')|float(0) %}
+          {% set forecast = states('sensor.adjusted_solcast_forecast_tomorrow')|float(0) %}
+          {% set avg_usage = states('input_number.average_power_usage')|float(0) %}
+          {% set required_energy = (100 - soc) / 100 * 15.6 %}
+          {% set adjusted_solar = forecast - avg_usage %}
+          {% set dynamic_rate = 8.192 %}
+          {% set required_time = (required_energy - adjusted_solar) / dynamic_rate %}
+          {% set optimal_start_time = 16 - required_time %}
+          # Ensure the optimal start time is within the 10:00 to 16:00 window
+          {% if optimal_start_time < 10 %}
+            {% set optimal_start_time = 10 %}
+          {% elif optimal_start_time > 16 %}
+            {% set optimal_start_time = 16 %}
+          {% endif %}
+          {% set hours = optimal_start_time|int %}
+          {% set minutes = ((optimal_start_time - hours) * 60)|int %}
+          {{ '%02d:%02d' % (hours, minutes) }}
+
+automation:
+  # Capture Previous Day SOC at 09:59 AM
+  - alias: Capture Previous Day SOC
+    trigger:
+      - platform: time
+        at: '09:59:00'
+    action:
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.previous_day_soc
+          value: "{{ states('sensor.alpha_ess_soc_battery') | float(0) }}"
