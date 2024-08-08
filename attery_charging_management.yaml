@@ -1,6 +1,5 @@
 homeassistant:
   customize:
-    # Customize sensor names and icons
     sensor.adjusted_solcast_total_forecast_today:
       friendly_name: "Adjusted Total Solar Forecast Today"
       icon: mdi:weather-sunny
@@ -40,9 +39,11 @@ homeassistant:
     sensor.required_energy:
       friendly_name: "Required Energy"
       icon: mdi:battery
+    sensor.adjusted_required_energy:
+      friendly_name: "Adjusted Required Energy"
+      icon: mdi:battery-alert
 
 input_number:
-  # Average power usage input
   average_power_usage:
     name: Average Power Usage
     initial: 10
@@ -52,7 +53,6 @@ input_number:
     unit_of_measurement: 'kWh'
     icon: mdi:flash
 
-  # Solar dampener input
   solar_dampener:
     name: Solar Dampener
     initial: 100
@@ -62,7 +62,6 @@ input_number:
     unit_of_measurement: '%'
     icon: mdi:weather-sunny
 
-  # Previous day SOC input
   previous_day_soc:
     name: Previous Day SOC
     initial: 0
@@ -73,13 +72,11 @@ input_number:
     icon: mdi:battery
 
 input_text:
-  # Weather forecast input text
   weather_forecast_10am_tomorrow:
     name: Weather Forecast 10 AM Tomorrow
     initial: "Sunny"
 
 input_boolean:
-  # Boolean to track if charging is in progress
   charging_in_progress:
     name: Charging in Progress
     initial: off
@@ -87,7 +84,6 @@ input_boolean:
 sensor:
   - platform: template
     sensors:
-      # Adjusted Solcast total forecast today
       adjusted_solcast_total_forecast_today:
         friendly_name: "Adjusted Solcast Total Forecast Today"
         unit_of_measurement: 'kWh'
@@ -96,7 +92,6 @@ sensor:
           {% set dampener = states('input_number.solar_dampener')|float(0) / 100 %}
           {{ forecast * dampener }}
 
-      # Adjusted Solcast remaining forecast today
       adjusted_solcast_remaining_forecast_today:
         friendly_name: "Adjusted Solcast Remaining Forecast Today"
         unit_of_measurement: 'kWh'
@@ -105,7 +100,6 @@ sensor:
           {% set dampener = states('input_number.solar_dampener')|float(0) / 100 %}
           {{ forecast * dampener }}
 
-      # Adjusted Solcast power next hour
       adjusted_solcast_power_next_hour:
         friendly_name: "Adjusted Solcast Power Next Hour"
         unit_of_measurement: 'W'
@@ -114,7 +108,6 @@ sensor:
           {% set dampener = states('input_number.solar_dampener')|float(0) / 100 %}
           {{ forecast * dampener }}
 
-      # Adjusted Solcast power next 30 mins
       adjusted_solcast_power_next_30_mins:
         friendly_name: "Adjusted Solcast Power Next 30 Mins"
         unit_of_measurement: 'W'
@@ -123,7 +116,6 @@ sensor:
           {% set dampener = states('input_number.solar_dampener')|float(0) / 100 %}
           {{ forecast * dampener }}
 
-      # Dynamic charging rate based on battery temperature
       dynamic_charging_rate:
         friendly_name: "Dynamic Charging Rate"
         unit_of_measurement: 'kW'
@@ -138,7 +130,6 @@ sensor:
             {{ base_rate }}
           {% endif %}
 
-      # Required energy to reach 100% SOC
       required_energy:
         friendly_name: "Required Energy"
         unit_of_measurement: 'kWh'
@@ -146,7 +137,6 @@ sensor:
           {% set soc = states('sensor.alpha_ess_soc_battery')|float(0) %}
           {{ (100 - soc) / 100 * 15.6 }}
 
-      # Required charging time to reach 100% SOC
       required_charging_time:
         friendly_name: "Required Charging Time"
         unit_of_measurement: 'hours'
@@ -162,7 +152,14 @@ sensor:
             {{ required_time }}
           {% endif %}
 
-      # Plan for tomorrow overview
+      adjusted_required_energy:
+        friendly_name: "Adjusted Required Energy"
+        unit_of_measurement: 'kWh'
+        value_template: >
+          {% set required_energy = states('sensor.required_energy')|float(0) %}
+          {% set forecast_remaining = states('sensor.adjusted_solcast_remaining_forecast_today')|float(0) %}
+          {{ required_energy - forecast_remaining }}
+
       plan_for_tomorrow_overview:
         friendly_name: "Plan for Tomorrow Overview"
         value_template: >
@@ -171,7 +168,6 @@ sensor:
           {% set weather = states('input_text.weather_forecast_10am_tomorrow') %}
           {{ "SOC: " ~ soc ~ "%, Solar Forecast: " ~ forecast ~ " kWh, Weather: " ~ weather }}
 
-      # Remaining capacity of the battery
       remaining_capacity:
         friendly_name: "Remaining Capacity"
         unit_of_measurement: 'kWh'
@@ -179,7 +175,6 @@ sensor:
           {% set soc = states('sensor.alpha_ess_soc_battery')|float(0) %}
           {{ 15.6 * (soc / 100) }}
 
-      # Optimal start time for charging
       optimal_start_time:
         friendly_name: "Optimal Start Time"
         unit_of_measurement: 'hours'
@@ -187,14 +182,12 @@ sensor:
           {% set required_time = states('sensor.required_charging_time')|float(0) %}
           {{ 16 - required_time }}
 
-      # Current time in hours
       current_time:
         friendly_name: "Current Time"
         unit_of_measurement: 'hours'
         value_template: >
           {{ now().hour + now().minute / 60 }}
 
-      # Charging condition met status
       charging_condition:
         friendly_name: "Charging Condition"
         value_template: >
@@ -210,7 +203,6 @@ sensor:
           {% set optimal_start_time = end_time - required_time %}
           {{ (remaining_capacity > 0 and (forecast_remaining >= remaining_capacity or soc < 100) and (next_hour_power > 0 or next_30min_power > 0) and now_time >= optimal_start_time) or is_state('input_boolean.charging_in_progress', 'on') }}
 
-      # Forecast remaining solar energy for the day
       forecast_remaining:
         friendly_name: "Forecast Remaining"
         unit_of_measurement: 'kWh'
@@ -219,7 +211,6 @@ sensor:
 binary_sensor:
   - platform: template
     sensors:
-      # Binary sensor for battery charging status
       battery_charging:
         friendly_name: "Battery Charging"
         value_template: >
@@ -232,7 +223,6 @@ binary_sensor:
           {% endif %}
 
 automation:
-  # Capture the SOC at 09:59 each day
   - alias: Capture Previous Day SOC
     trigger:
       - platform: time
@@ -243,7 +233,6 @@ automation:
           entity_id: input_number.previous_day_soc
           value: "{{ states('sensor.alpha_ess_soc_battery') | float(0) }}"
 
-  # Update the weather forecast for 10 AM tomorrow
   - alias: Update Weather Forecast 10 AM Tomorrow
     trigger:
       - platform: time
@@ -258,7 +247,6 @@ automation:
           entity_id: input_text.weather_forecast_10am_tomorrow
           value: "Sunny"  # Placeholder until actual forecast data is integrated
 
-  # Manage battery charging based on various conditions
   - alias: Manage Battery Charging
     trigger:
       - platform: time_pattern
@@ -302,61 +290,60 @@ automation:
             Next Hour Power: {{ states('sensor.adjusted_solcast_power_next_hour') }}
             Next 30 Min Power: {{ states('sensor.adjusted_solcast_power_next_30_mins') }}
             Required Charging Time: {{ states('sensor.required_charging_time') }}
+            Adjusted Required Energy: {{ states('sensor.adjusted_required_energy') }}
             Current Time: {{ now().hour + now().minute / 60 }}
             Optimal Start Time: {{ 16 - (states('sensor.required_charging_time')|float(0)) }}
             Charging In Progress: {{ states('input_boolean.charging_in_progress') }}
 
-      # Write modbus register to set charging parameters
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2133
           slave: !secret alphaess_modbus_slaveId
-          value: 100  # Charging Cutoff SoC
+          value: 100
 
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2134
           slave: !secret alphaess_modbus_slaveId
-          value: 10  # Charging Period 1 Start Hour
+          value: 10
 
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2135
           slave: !secret alphaess_modbus_slaveId
-          value: 16  # Charging Period 1 Stop Hour
+          value: 16
 
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2136
           slave: !secret alphaess_modbus_slaveId
-          value: 0  # Charging Period 2 Start Hour
+          value: 0
 
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2137
           slave: !secret alphaess_modbus_slaveId
-          value: 0  # Charging Period 2 Stop Hour
+          value: 0
 
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2142
           slave: !secret alphaess_modbus_slaveId
-          value: 0  # Enable charging from grid
+          value: 0
 
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2143
           slave: !secret alphaess_modbus_slaveId
-          value: 0  # Enable charging from grid
+          value: 0
 
-  # Stop battery charging when SOC reaches 100%
   - alias: Stop Battery Charging
     trigger:
       - platform: template
@@ -370,46 +357,40 @@ automation:
           hub: modbuspvsystem
           address: 2133
           slave: !secret alphaess_modbus_slaveId
-          value: 0  # Stop charging
-
+          value: 0
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2134
           slave: !secret alphaess_modbus_slaveId
-          value: 0  # Charging Period 1 Start Hour
-
+          value: 0
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2135
           slave: !secret alphaess_modbus_slaveId
-          value: 0  # Charging Period 1 Stop Hour
-
+          value: 0
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2136
           slave: !secret alphaess_modbus_slaveId
-          value: 0  # Charging Period 2 Start Hour
-
+          value: 0
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2137
           slave: !secret alphaess_modbus_slaveId
-          value: 0  # Charging Period 2 Stop Hour
-
+          value: 0
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2142
           slave: !secret alphaess_modbus_slaveId
-          value: 1  # Disable charging from grid
-
+          value: 1
       - service: modbus.write_register
         data:
           hub: modbuspvsystem
           address: 2143
           slave: !secret alphaess_modbus_slaveId
-          value: 1  # Disable charging from grid
+          value: 1
