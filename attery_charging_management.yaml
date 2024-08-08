@@ -180,13 +180,19 @@ sensor:
         unit_of_measurement: 'hours'
         value_template: >
           {% set required_time = states('sensor.required_charging_time')|float(0) %}
-          {{ 16 - required_time }}
+          {% set optimal_time = 16 - required_time %}
+          {% set hours = optimal_time|int %}
+          {% set minutes = ((optimal_time - hours) * 60)|int %}
+          {{ '%02d:%02d' % (hours, minutes) }}
 
       current_time:
         friendly_name: "Current Time"
         unit_of_measurement: 'hours'
         value_template: >
-          {{ now().hour + now().minute / 60 }}
+          {% set now_time = now().hour + now().minute / 60 %}
+          {% set hours = now().hour %}
+          {% set minutes = now().minute %}
+          {{ '%02d:%02d' % (hours, minutes) }}
 
       charging_condition:
         friendly_name: "Charging Condition"
@@ -291,8 +297,8 @@ automation:
             Next 30 Min Power: {{ states('sensor.adjusted_solcast_power_next_30_mins') }}
             Required Charging Time: {{ states('sensor.required_charging_time') }}
             Adjusted Required Energy: {{ states('sensor.adjusted_required_energy') }}
-            Current Time: {{ now().hour + now().minute / 60 }}
-            Optimal Start Time: {{ 16 - (states('sensor.required_charging_time')|float(0)) }}
+            Current Time: {{ states('sensor.current_time') }}
+            Optimal Start Time: {{ states('sensor.optimal_start_time') }}
             Charging In Progress: {{ states('input_boolean.charging_in_progress') }}
 
       - service: modbus.write_register
@@ -346,8 +352,8 @@ automation:
 
   - alias: Stop Battery Charging
     trigger:
-      - platform: template
-        value_template: "{{ states('sensor.alpha_ess_soc_battery')|float >= 100 }}"
+      - platform: time
+        at: '16:00:00'
     action:
       - service: input_boolean.turn_off
         data:
