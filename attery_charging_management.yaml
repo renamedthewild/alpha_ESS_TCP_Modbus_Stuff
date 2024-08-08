@@ -205,7 +205,6 @@ binary_sensor:
           {% endif %}
 
 automation:
-  # Manage Battery Charging Automation
   - alias: Manage Battery Charging
     trigger:
       # Trigger Every 10 Minutes
@@ -239,6 +238,10 @@ automation:
             {% set end_time = 16 %}
             {% set optimal_start_time = end_time - required_time %}
             {{ (remaining_capacity > 0 and (forecast_remaining >= remaining_capacity or soc < 100) and (next_hour_power > 0 or next_30min_power > 0) and now_time >= optimal_start_time) or is_state('input_boolean.charging_in_progress', 'on') }}
+        # Ensure Charging is Not Already in Progress
+        - condition: state
+          entity_id: input_boolean.charging_in_progress
+          state: 'off'
     action:
       - delay: '00:00:05'
       # Turn On Charging in Progress Indicator
@@ -311,7 +314,6 @@ automation:
           slave: !secret alphaess_modbus_slaveId
           value: 0
 
-  # Stop Battery Charging Automation at 16:00
   - alias: Stop Battery Charging
     trigger:
       - platform: time
